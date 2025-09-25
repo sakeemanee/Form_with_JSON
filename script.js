@@ -1,270 +1,165 @@
-// ========== Configuration ==========
+// script.js
 
-const BASE_URL = 'https://json-1aoj.onrender.com';  // Your rendered JSON server URL
-const PENDING_KEY = 'userDetails';
-const ACCEPTED_KEY = 'accepted-form';
-const REJECTED_KEY = 'rejected-form';
+const BASE_URL = "https://json-1aoj.onrender.com";
 
-let allUserData = JSON.parse(localStorage.getItem(PENDING_KEY)) || [];
-const signupForm = document.getElementById('signupForm');
-const dataBody = document.getElementById('dataBody');
-const totalForm = document.getElementById('totalForm');
+// Local storage keys
+const PENDING_KEY = "pending";
+const ACCEPTED_KEY = "accepted";
+const REJECTED_KEY = "rejected";
 
-let editIndex = null;
+// UI elements
+const dataBody = document.getElementById("dataBody");
+const btnPending = document.getElementById("btnPending");
+const btnAccepted = document.getElementById("btnAccepted");
+const btnRejected = document.getElementById("btnRejected");
 
-// ========== Local Storage Helpers ==========
+// App state
+let currentPage = "pending";
+let allUserData = [];
 
-function savePendingToLocal() {
-  localStorage.setItem(PENDING_KEY, JSON.stringify(allUserData));
-  updateTotal();
-}
+// Initialize
+document.addEventListener("DOMContentLoaded", () => {
+  loadPage("pending");
+});
 
-function updateTotal() {
-  totalForm.textContent = 'Total Admission Forms: ' + allUserData.length;
-}
+// Switch page handler
+btnPending.addEventListener("click", () => loadPage("pending"));
+btnAccepted.addEventListener("click", () => loadPage("accepted"));
+btnRejected.addEventListener("click", () => loadPage("rejected"));
 
-function addDataToLocal(key, value) {
-  const list = JSON.parse(localStorage.getItem(key)) || [];
-  list.push(JSON.parse(JSON.stringify(value)));
-  localStorage.setItem(key, JSON.stringify(list));
-}
+// Load page data
+async function loadPage(page) {
+  currentPage = page;
+  dataBody.innerHTML = "";
 
-// ========== API Helpers ==========
-
-async function getNextId(endpoint) {
   try {
-    const res = await fetch(`${BASE_URL}/${endpoint}`);
+    const res = await fetch(`${BASE_URL}/${page}`);
     const data = await res.json();
-    if (!Array.isArray(data)) return 1;
-    const ids = data
-      .map(item => item.id)
-      .filter(id => typeof id === 'number');
-    return ids.length ? Math.max(...ids) + 1 : 1;
-  } catch (err) {
-    console.error('Error in getNextId:', err);
-    return 1;
-  }
-}
 
-async function saveToApi(endpoint, user) {
-  try {
-    const res = await fetch(`${BASE_URL}/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user)
-    });
-    if (!res.ok) {
-      console.error('Failed to POST to API', await res.text());
-    }
-  } catch (err) {
-    console.error('Error in saveToApi:', err);
-  }
-}
-
-// ========== Fetch initial from API ==========
-
-async function fetchPendingFromServer() {
-  try {
-    const res = await fetch(`${BASE_URL}/pending`);
-    if (!res.ok) {
-      console.error('Fetch pending failed:', res.status, await res.text());
-      displayData();
-      return;
-    }
-    const data = await res.json();
-    if (Array.isArray(data)) {
+    if (page === "pending") {
       allUserData = data;
       savePendingToLocal();
     }
+
+    displayData(data);
   } catch (err) {
-    console.error('Error fetching pending from server:', err);
-  } finally {
-    displayData();
+    console.error("Error loading data:", err);
+    dataBody.innerHTML = `<tr><td colspan="5">Failed to load ${page} data</td></tr>`;
   }
 }
 
-// ========== Display / UI ==========
-
-function displayData() {
-  dataBody.innerHTML = '';
-  allUserData.forEach((item, index) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${item.name || ''}</td>
-      <td>${item.email || ''}</td>
-      <td>${item.mobile || ''}</td>
-      <td>${item.course || ''}</td>
-      <td>${item.status || ''}</td>
-      <td>
-        <button type="button" class="btn-accept" data-index="${index}">Accept</button>
-        <button type="button" class="btn-reject" data-index="${index}">Reject</button>
-        <button type="button" class="btn-edit" data-index="${index}">Edit</button>
-        <button type="button" class="btn-delete" data-index="${index}">Delete</button>
-      </td>
-    `;
-    dataBody.appendChild(tr);
-  });
-  updateTotal();
+// Save pending to local
+function savePendingToLocal() {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(allUserData));
 }
 
-// ========== Event Handlers on Table Buttons ==========
-
-dataBody.addEventListener('click', async function(e) {
-  const target = e.target;
-  const idx = target.dataset.index;
-  if (idx == null) return;
-  const index = Number(idx);
-  const user = allUserData[index];
-  if (!user) return;
-
-  // Edit
-  if (target.classList.contains('btn-edit')) {
-    editIndex = index;
-    document.getElementById('name').value = user.name;
-    document.getElementById('email').value = user.email;
-    document.getElementById('mobile').value = user.mobile;
-    document.getElementById('course').value = user.course;
-    signupForm.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  // Accept
-  else if (target.classList.contains('btn-accept')) {
-    user.status = 'Accepted';
-    const id = await getNextId('accepted');
-    const acceptedUser = { ...user, id };
-    addDataToLocal(ACCEPTED_KEY, acceptedUser);
-
-    // remove locally
-    allUserData.splice(index, 1);
-    savePendingToLocal();
-    displayData();
-
-    alert(`${user.name} has been accepted!`);
-
-    // save to accepted API
-    await saveToApi('accepted', acceptedUser);
-
-    // delete from pending API
-    try {
-      await fetch(`${BASE_URL}/pending/${user.id}`, { method: 'DELETE' });
-    } catch (err) {
-      console.error('Failed to delete from pending API', err);
-    }
-  }
-
-  // Reject
-  else if (target.classList.contains('btn-reject')) {
-    user.status = 'Rejected';
-    const id = await getNextId('rejected');
-    const rejectedUser = { ...user, id };
-    addDataToLocal(REJECTED_KEY, rejectedUser);
-
-    // remove locally
-    allUserData.splice(index, 1);
-    savePendingToLocal();
-    displayData();
-
-    alert(`${user.name} has been rejected!`);
-
-    // save to rejected API
-    await saveToApi('rejected', rejectedUser);
-
-    // delete from pending API
-    try {
-      await fetch(`${BASE_URL}/pending/${user.id}`, { method: 'DELETE' });
-    } catch (err) {
-      console.error('Failed to delete from pending API', err);
-    }
-  }
-
-  // Delete (just from pending)
-  else if (target.classList.contains('btn-delete')) {
-    if (!confirm('Delete this pending entry?')) {
-      return;
-    }
-    allUserData.splice(index, 1);
-    savePendingToLocal();
-    displayData();
-    alert(`${user?.name || 'Entry'} deleted successfully!`);
-    try {
-      await fetch(`${BASE_URL}/pending/${user.id}`, {
-        method: 'DELETE'
-      });
-    } catch (err) {
-      console.error('Failed to delete from API', err);
-    }
-  }
-});
-
-// ========== Form Submission ==========
-
-signupForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const name = document.getElementById('name').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const mobile = document.getElementById('mobile').value.trim();
-  const course = document.getElementById('course').value;
-
-  if (!name || !email || !mobile || !course) {
-    alert('Please fill all fields.');
+// Display data in table
+function displayData(data = allUserData) {
+  dataBody.innerHTML = "";
+  if (data.length === 0) {
+    dataBody.innerHTML = `<tr><td colspan="5">No data available</td></tr>`;
     return;
   }
 
-  if (editIndex !== null) {
-    // Editing existing pending
-    const old = allUserData[editIndex];
-    const updated = {
-      ...old,
-      name,
-      email,
-      mobile,
-      course
-    };
-    allUserData[editIndex] = updated;
-    savePendingToLocal();
-    displayData();
-    alert('Form updated successfully!');
-
-    // PATCH to API
-    try {
-      const res = await fetch(`${BASE_URL}/pending/${updated.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
-      if (!res.ok) {
-        console.error('PATCH failed:', res.status, await res.text());
-      }
-    } catch (err) {
-      console.error('Error in PATCH:', err);
+  data.forEach((user, index) => {
+    let actions = "";
+    if (currentPage === "pending") {
+      actions = `
+        <button class="btn-accept" data-index="${index}">Accept</button>
+        <button class="btn-reject" data-index="${index}">Reject</button>
+      `;
     }
 
-    editIndex = null;
-  } else {
-    // New entry
-    const id = await getNextId('pending');
-    const user = {
-      id,
-      name,
-      email,
-      mobile,
-      course,
-      status: 'Pending'
-    };
-    allUserData.push(user);
+    const row = `
+      <tr>
+        <td>${user.id}</td>
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.status || "-"}</td>
+        <td>${actions}</td>
+      </tr>
+    `;
+    dataBody.insertAdjacentHTML("beforeend", row);
+  });
+}
+
+// Handle Accept/Reject clicks
+dataBody.addEventListener("click", async (e) => {
+  const target = e.target;
+  if (!target.dataset.index) return;
+
+  const index = parseInt(target.dataset.index);
+  const user = allUserData[index];
+
+  if (!user) return;
+
+  // Accept
+  if (target.classList.contains("btn-accept")) {
+    user.status = "Accepted";
+    const id = await getNextId("accepted");
+    const acceptedUser = { ...user, id };
+    await saveToApi("accepted", acceptedUser);
+
+    // Remove from pending
+    allUserData.splice(index, 1);
     savePendingToLocal();
-    displayData();
-    alert('Form submitted successfully!');
-    await saveToApi('pending', user);
+    await deleteFromApi("pending", user.id);
+
+    alert(`${user.name} has been accepted!`);
+
+    // Redirect to Accepted page
+    loadPage("accepted");
   }
 
-  // Reset form
-  e.target.reset();
+  // Reject
+  else if (target.classList.contains("btn-reject")) {
+    user.status = "Rejected";
+    const id = await getNextId("rejected");
+    const rejectedUser = { ...user, id };
+    await saveToApi("rejected", rejectedUser);
+
+    // Remove from pending
+    allUserData.splice(index, 1);
+    savePendingToLocal();
+    await deleteFromApi("pending", user.id);
+
+    alert(`${user.name} has been rejected!`);
+
+    // Redirect to Rejected page
+    loadPage("rejected");
+  }
 });
 
-// ========== Initialization ==========
+// Save to API
+async function saveToApi(collection, user) {
+  try {
+    await fetch(`${BASE_URL}/${collection}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    });
+  } catch (err) {
+    console.error(`Error saving to ${collection} API:`, err);
+  }
+}
 
-window.addEventListener('load', () => {
-  fetchPendingFromServer();
-});
+// Delete from API
+async function deleteFromApi(collection, id) {
+  try {
+    await fetch(`${BASE_URL}/${collection}/${id}`, { method: "DELETE" });
+  } catch (err) {
+    console.error(`Error deleting from ${collection}:`, err);
+  }
+}
+
+// Get next ID for new entry
+async function getNextId(collection) {
+  try {
+    const res = await fetch(`${BASE_URL}/${collection}`);
+    const data = await res.json();
+    return data.length > 0 ? Math.max(...data.map((u) => u.id)) + 1 : 1;
+  } catch (err) {
+    console.error("Error getting next ID:", err);
+    return Date.now();
+  }
+}
