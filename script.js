@@ -25,7 +25,6 @@ function updateTotal() {
 
 function addDataToLocal(key, value) {
   const list = JSON.parse(localStorage.getItem(key)) || [];
-  // Deep clone value to avoid references
   list.push(JSON.parse(JSON.stringify(value)));
   localStorage.setItem(key, JSON.stringify(list));
 }
@@ -69,7 +68,7 @@ async function fetchPendingFromServer() {
     const res = await fetch(`${BASE_URL}/pending`);
     if (!res.ok) {
       console.error('Fetch pending failed:', res.status, await res.text());
-      displayData();  // fallback
+      displayData();
       return;
     }
     const data = await res.json();
@@ -135,11 +134,23 @@ dataBody.addEventListener('click', async function(e) {
     const id = await getNextId('accepted');
     const acceptedUser = { ...user, id };
     addDataToLocal(ACCEPTED_KEY, acceptedUser);
+
+    // remove locally
     allUserData.splice(index, 1);
     savePendingToLocal();
     displayData();
+
     alert(`${user.name} has been accepted!`);
+
+    // save to accepted API
     await saveToApi('accepted', acceptedUser);
+
+    // delete from pending API
+    try {
+      await fetch(`${BASE_URL}/pending/${user.id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete from pending API', err);
+    }
   }
 
   // Reject
@@ -148,11 +159,23 @@ dataBody.addEventListener('click', async function(e) {
     const id = await getNextId('rejected');
     const rejectedUser = { ...user, id };
     addDataToLocal(REJECTED_KEY, rejectedUser);
+
+    // remove locally
     allUserData.splice(index, 1);
     savePendingToLocal();
     displayData();
+
     alert(`${user.name} has been rejected!`);
+
+    // save to rejected API
     await saveToApi('rejected', rejectedUser);
+
+    // delete from pending API
+    try {
+      await fetch(`${BASE_URL}/pending/${user.id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete from pending API', err);
+    }
   }
 
   // Delete (just from pending)
@@ -164,7 +187,6 @@ dataBody.addEventListener('click', async function(e) {
     savePendingToLocal();
     displayData();
     alert(`${user?.name || 'Entry'} deleted successfully!`);
-    // Optionally, you might call DELETE on API if you maintain delete on server
     try {
       await fetch(`${BASE_URL}/pending/${user.id}`, {
         method: 'DELETE'
@@ -173,7 +195,6 @@ dataBody.addEventListener('click', async function(e) {
       console.error('Failed to delete from API', err);
     }
   }
-
 });
 
 // ========== Form Submission ==========
