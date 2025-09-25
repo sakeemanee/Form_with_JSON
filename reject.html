@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejected Admissions</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { color: #c62828; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th { background: #ffebee; }
+    button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      background: #f44336;
+      color: white;
+      cursor: pointer;
+    }
+    a { text-decoration: none; color: #2196f3; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <a href="./index.html">⬅ Back</a>
+  <h1>Rejected Admission Details</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Sr.No</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Mobile</th>
+        <th>Course</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="dataBody"></tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    const API_BASE = "https://maneesha-clone.onrender.com";
+    const dataBody = document.getElementById("dataBody");
+    let rejectedData = [];
+
+    async function fetchRejected() {
+        try {
+            let response = await axios.get(`${API_BASE}/rejected`);
+            rejectedData = response.data;
+            displayData();
+        } catch (error) {
+            console.log(error);
+        }
+    }
+    fetchRejected();
+
+    function displayData() {
+        dataBody.innerHTML = "";
+        rejectedData.forEach((item, index) => {
+            let row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${item.name}</td>
+              <td>${item.email}</td>
+              <td>${item.mobile || ""}</td>
+              <td>${item.course}</td>
+              <td>${item.status}</td>
+              <td>
+                <button onclick="deleteRow(${item.id})">Delete</button>
+              </td>
+            `;
+            dataBody.appendChild(row);
+        });
+    }
+
+    async function deleteRow(id) {
+        await axios.delete(`${API_BASE}/rejected/${id}`);
+        fetchRejected();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Course Sign-up</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div id="totalForm">Total Admission Forms 0</div>
+    <div>
+      <a href="reject.html">Rejected admission</a>
+      <a href="./index.html">Pending admission</a>
+      <a href="accept.html">Accepted admission</a>
+    </div>
+  </nav>
+
+  <main class="wrapper">
+    <section class="card">
+      <h2>Enroll in a Course</h2>
+      <form id="signupForm" autocomplete="off">
+        <label>Full Name *</label>
+        <input id="name" required placeholder="e.g., Maneesha" />
+        <label>Email *</label>
+        <input id="email" type="email" required placeholder="you@example.com" />
+        <label>Mobile Number *</label>
+        <input id="mobile" type="tel" required pattern="[0-9]{10}" placeholder="e.g., 9876543210" />
+        <label>Course *</label>
+        <select id="course" required>
+          <option value="" disabled selected>Select a course</option>
+          <option>Web Development</option>
+          <option>Data Science</option>
+          <option>UI/UX Design</option>
+          <option>Mobile App Development</option>
+          <option>Cloud & DevOps</option>
+        </select>
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Sr.No</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Mobile</th> <!-- Added column -->
+          <th>Course</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="dataBody"></tbody>
+    </table>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
